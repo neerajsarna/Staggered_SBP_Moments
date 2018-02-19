@@ -14,7 +14,14 @@ if ~isfield(par,'sigma_s0'), par.sigma_s0 = @zero; end%Defa.: no scatter.
 if ~isfield(par,'source'),  par.source = @zero; end % Default: no source.
 if par.num_bc ~=4
     assert(1 == 0, 'not valid num bc'); 
-end        
+end   
+
+% if the number of arguments are greater than 3 then definitely we have 
+% an anisotropic source term.
+if ~isfield(par,'source_ind') % If no source moment vector specified, use
+    par.source_ind = 1:((nargin(par.source)>=0)+...   % zeroth moment for
+        (nargin(par.source)>3)*(par.n_eqn-1));  
+end
 
 % corresponding to every row in Ax, stores the non-zero indices
 Ix = cellfun(@find,num2cell(par.system_data.Ax',1),'Un',0);         
@@ -23,11 +30,11 @@ Iy = cellfun(@find,num2cell(par.system_data.Ay',1),'Un',0);
 % in total we have four grids.x1 and x2 are the two grids in the x
 % direction.
 % x1 n y1
-c11 = 1; 
+c22 = 1; 
 % x1y2
 c12 = [];
 c21 = [];
-c22 = [];
+c11 = [];
 while length([c11,c12,c21,c22])<par.n_eqn                         
     c11 = unique(vertcat(c11',Ix{c21},Iy{c12})');            
     c12 = unique(vertcat(c12',Ix{c22},Iy{c11})');
@@ -137,9 +144,8 @@ t = 0; step_count = 0;
 
 % compute the material properties at t = 0
 % stores which moment order sits on which grid
-sg = [gtx;gty;par.mom_order]';   
-% we assume that nothing is being prescribed to the zeroth moment
-sg = unique(sg(logical(par.mom_order),:),'rows')';           
+sg = [gtx;gty;par.mom_order]';                 % Construct staggered grid 
+sg = unique(sg(2:end,:),'rows')';            % indices with moment order.
 
 s0 = cellfun(@(x,y)capargs(...            
                 par.sigma_a,x,y,0),X,Y,'Un',0); 
@@ -245,7 +251,7 @@ while t < par.t_end
 %                                     par.system_data.penalty_B{bc_ID}(j,bc_coupling{bc_ID}{j}));
 %             end
             
-            
+          
             for i = 1 : par.n_eqn
                 % multiplication by the system matrices
                 W = -sumcell([dxU(Ix{i}),dyU(Iy{i})],...
@@ -255,7 +261,7 @@ while t < par.t_end
                                         bc_values{i});
                 % if not the zeroth order moment then we also need to find
                 % the contribution from the anistropic scattering. 
-                if par.mom_order(i) ~= 0
+                if i ~= 1
                     k_RK{RK}{i} = k_RK{RK}{i} +  sM{gtx(i),gty(i),par.mom_order(i)}.*UTemp{i};
                 end
                 

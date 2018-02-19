@@ -5,12 +5,12 @@ clear all;
 %========================================================================
 par = struct(...
 'name','Lattice Test',... % name of example
-'n_mom',30,... % order of moment approximation
+'n_mom',3,... % order of moment approximation
 'sigma_a',@sigma_a,... % absorption coefficient (defined below)
 'sigma_s0',@sigma_s0,... % isotropic scattering coefficient (def. below)
 'source',@source,... % source term (defined below)
 'ax',[0 7 0 7],... % coordinates of computational domain
-'n',[150 150],... % numbers of grid cells in each coordinate direction
+'n',[250 250],... % numbers of grid cells in each coordinate direction
  't_end',1.0,... % the end time of the computatio
  'diff_order',2,... % the difference order in the physical space
  'CFL',2.0,...      % the crude cfl number 
@@ -20,27 +20,13 @@ par = struct(...
 );
 
 par.t_plot = linspace(0,par.t_end,50);
-    
-% read the system matrices from a text file
+   
 par.n_eqn = (par.n_mom + 1) * (par.n_mom + 2)/2;
 
-% develop the filenames from which we will read the data
-[filenames] = dvlp_filenames(par.n_eqn);
-[par.system_data] = get_system_data(filenames); % Compute moment matrices.
-
-% set the order of the moments i.e the value of l
-par.mom_order = ceil(sqrt(2*(1:par.n_eqn)+1/4)-3/2);
-
-% we need to permute based upon our moment order
-par.mom_order = par.system_data.Perm * par.mom_order';
-par.mom_order = par.mom_order';
-
-% the index of the moments to which force has to be supplied 
-% providing a force to only the zeroth order moment
-par.source_ind = find(~par.mom_order);
+[par.system_data.Ax,par.system_data.Ay,par.mom_order] = closure_pn(par.n_mom);
 
 % the moment variable to be output
-par.mom_output = find(~par.mom_order);
+par.mom_output = 1;
 
 % create the penalty matrix and penalty * B for all the boundaries
 % a loop over all the boundaries
