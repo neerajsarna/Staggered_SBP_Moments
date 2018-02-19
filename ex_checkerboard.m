@@ -10,11 +10,10 @@ par = struct(...
 'sigma_s0',@sigma_s0,... % isotropic scattering coefficient (def. below)
 'source',@source,... % source term (defined below)
 'ax',[0 7 0 7],... % coordinates of computational domain
-'n',[250 250],... % numbers of grid cells in each coordinate direction
+'n',[100 100],... % numbers of grid cells in each coordinate direction
  't_end',1.0,... % the end time of the computatio
- 'diff_order',2,... % the difference order in the physical space
- 'CFL',2.0,...      % the crude cfl number 
- 'time_dep',[0 0 0 0 0],... % time dependency of s0,sa,sm,source,g
+ 'diff_order',4,... % the difference order in the physical space
+ 'CFL',2.0,...      % the crude cfl number
  'num_bc',4,... % number of boundaries in the domain
 'output',@output... % problem-specific output routine (defined below
 );
@@ -42,7 +41,7 @@ par.mom_output = 1;
 % end
 
 % solve the system
-solver(par);
+solution = solver(par);
 
 %========================================================================
 % Problem Specific Functions

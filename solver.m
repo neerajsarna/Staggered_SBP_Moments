@@ -16,6 +16,11 @@ if par.num_bc ~=4
     assert(1 == 0, 'not valid num bc'); 
 end   
 
+
+% find which of the given data is time dependent
+time_dep = [nargin(par.sigma_s0)>2,nargin(par.sigma_a)>2,...
+            nargin(par.sigma_sm)>3 nargin(par.source)>2 0];
+        
 % if the number of arguments are greater than 3 then definitely we have 
 % an anisotropic source term.
 if ~isfield(par,'source_ind') % If no source moment vector specified, use
@@ -136,7 +141,6 @@ for j = 1:par.n_eqn
     bc_values{j} = X{gtx(j),gty(j)}*0;
 end
 
-
 %% Time Loop
 par.t_plot = [par.t_plot par.t_end inf]; plot_count = 1;
 cputime = zeros(1,3);
@@ -148,7 +152,7 @@ sg = [gtx;gty;par.mom_order]';                 % Construct staggered grid
 sg = unique(sg(2:end,:),'rows')';            % indices with moment order.
 
 s0 = cellfun(@(x,y)capargs(...            
-                par.sigma_a,x,y,0),X,Y,'Un',0); 
+                par.sigma_s0,x,y,0),X,Y,'Un',0); 
             
 sA = cellfun(@(x,y)capargs(...           
                 par.sigma_a,x,y,0),X,Y,'Un',0); 
@@ -182,15 +186,15 @@ while t < par.t_end
      
      UTemp = U; 
      for RK = 1 : 4
-            evaluate = par.time_dep & (t_temp(RK) > 0);
+            evaluate = time_dep & (t_temp(RK) > 0);
             if evaluate(1)
                 s0 = cellfun(@(x,y)capargs(...            
-                        par.sigma_a,x,y,0),X,Y,'Un',t_temp(RK));
+                        par.sigma_s0,x,y,t_temp(RK)),X,Y,'Un',0);
             end
             
             if evaluate(2)
                 sA = cellfun(@(x,y)capargs(...           
-                    par.sigma_a,x,y,0),X,Y,'Un',t_temp(RK)); 
+                    par.sigma_a,x,y,t_temp(RK)),X,Y,'Un',0); 
             end
             
             if evaluate(3)
@@ -257,12 +261,13 @@ while t < par.t_end
                 W = -sumcell([dxU(Ix{i}),dyU(Iy{i})],...
                     [par.system_data.Ax(i,Ix{i}),par.system_data.Ay(i,Iy{i})]);
                                     
-                k_RK{RK}{i} = (W - (s0{gtx(i),gty(i)}+sA{gtx(i),gty(i)}).*UTemp{i} + force{i} + ...
+                k_RK{RK}{i} = (W - sA{gtx(i),gty(i)}.*UTemp{i} + force{i} + ...
                                         bc_values{i});
                 % if not the zeroth order moment then we also need to find
                 % the contribution from the anistropic scattering. 
                 if i ~= 1
-                    k_RK{RK}{i} = k_RK{RK}{i} +  sM{gtx(i),gty(i),par.mom_order(i)}.*UTemp{i};
+                    k_RK{RK}{i} = k_RK{RK}{i} +  (-s0{gtx(i),gty(i)} + ...
+                                  sM{gtx(i),gty(i),par.mom_order(i)}).*UTemp{i};
                 end
                 
                 if RK ~= 4
@@ -289,7 +294,7 @@ while t < par.t_end
         Uplot = U{par.mom_output}; % linear interpolation in time.
         if plot_count==length(par.t_plot)-1      % Is final time reached?
             if nargout                   % If yes, save solution at final
-                output = struct('x',x(gtx),'y',y(gty),'U',U);     % time.
+                output = struct('x',x(gtx),'y',y(gty),'U',U,'Px',PX(gtx),'Py',PY(gty));     % time.
             end
         else                           % If not, invoke plotting routine.
             xplot = x{gtx(par.mom_output)};             % Assign grids at
